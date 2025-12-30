@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Explorer | Interactive Syllabus</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .code-font { font-family: 'Fira Code', monospace; }
+        .tab-active { border-bottom: 2px solid #ea580c; color: #ea580c; font-weight: 600; }
+        .tab-inactive { color: #6b7280; }
+        .tab-inactive:hover { color: #374151; }
+        
+        /* Chart Container Styling */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            height: 300px;
+            max-height: 400px;
+        }
+
+        /* Custom Scrollbar for code blocks */
+        pre::-webkit-scrollbar { height: 8px; }
+        pre::-webkit-scrollbar-track { background: #1f2937; }
+        pre::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+
+        .jdk-box { transition: all 0.3s ease; }
+        .jdk-box:hover { transform: translateY(-2px); shadow: lg; }
+        
+        .array-cell { transition: all 0.2s; }
+        .array-cell.active { background-color: #fb923c; color: white; transform: scale(1.1); }
+    </style>
+    <!-- Chosen Palette: Warm Neutrals with Orange/Amber Accents (Java Logo colors) -->
+    <!-- Application Structure Plan: 
+         1. The Layout is a single-page "Dashboard" with a top navigation bar dividing the syllabus into 5 logical modules: Intro, Data, Flow, Arrays, and Practice.
+         2. Each module contains a mix of "Theory Cards" (textual content) and "Interactive Labs" (simulations).
+         3. The "Intro" section uses nested box models to explain JDK/JRE/JVM structure.
+         4. The "Data" section uses Chart.js to visualize primitive type sizes and a calculator for operators.
+         5. The "Flow" section features a "Code Stepper" to visually walk through loops and conditions.
+         6. The "Arrays" section uses an interactive grid to demonstrate index/value relationships.
+         7. This structure was chosen to transform abstract programming concepts into tangible, visual interactions, aiding retention.
+    -->
+    <!-- Visualization & Content Choices:
+         1. JDK/JRE/JVM -> Goal: Explain Hierarchy -> Viz: Nested CSS Divs (Box Model) -> Interaction: Hover to reveal definitions.
+         2. Data Types -> Goal: Compare Storage Size -> Viz: Chart.js Bar Chart (Bits) -> Interaction: None.
+         3. Control Flow -> Goal: Demonstrate Execution Logic -> Viz: JS-driven Code Highlighter -> Interaction: "Next Step" button to iterate loops.
+         4. Arrays -> Goal: Visualize Memory Indices -> Viz: CSS Grid -> Interaction: Click cell to update value.
+         5. Features -> Goal: List capabilities -> Viz: Icon Cards -> Interaction: Hover effects.
+         NO SVG graphics used. NO Mermaid JS used.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+</head>
+<body class="text-gray-800 flex flex-col min-h-screen">
+
+    <!-- Navigation -->
+    <nav class="bg-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <i class="fa-brands fa-java text-4xl text-orange-600 mr-3"></i>
+                    <span class="font-bold text-xl tracking-tight text-gray-900">Java<span class="text-orange-600">Explorer</span></span>
+                </div>
+                <div class="hidden md:flex space-x-8 items-center" id="nav-container">
+                    <!-- Nav items injected by JS -->
+                </div>
+                <!-- Mobile menu button -->
+                <div class="flex items-center md:hidden">
+                    <button id="mobile-menu-btn" class="text-gray-500 hover:text-gray-900 focus:outline-none">
+                        <i class="fa-solid fa-bars text-2xl"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <!-- Mobile Menu -->
+        <div id="mobile-menu" class="hidden md:hidden bg-gray-50 border-t">
+            <div class="px-2 pt-2 pb-3 space-y-1" id="mobile-nav-container">
+                <!-- Mobile Nav items injected by JS -->
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full" id="main-content">
+        <!-- Content injected by JS -->
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-6 mt-8">
+        <div class="max-w-7xl mx-auto px-4 text-center">
+            <p class="text-sm text-gray-400">© 2024 Java Explorer. Designed for Interactive Learning.</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- State Management ---
+        const appState = {
+            currentTab: 'intro',
+            loopCounter: 0,
+            loopMax: 5,
+            arrayData: [0, 0, 0, 0, 0],
+            matrixData: [[0,0,0],[0,0,0],[0,0,0]]
+        };
+
+        // --- Data Content ---
+        const contentData = {
+            intro: {
+                title: "Introduction to Java",
+                description: "Java is a high-level, class-based, object-oriented programming language that is designed to have as few implementation dependencies as possible. It is intended to let application developers 'write once, run anywhere' (WORA).",
+                features: [
+                    { icon: "fa-globe", title: "Platform Independent", desc: "Bytecode runs on any machine with a JVM." },
+                    { icon: "fa-cube", title: "Object Oriented", desc: "Everything is an object. Modular and reusable." },
+                    { icon: "fa-shield-halved", title: "Secure", desc: "No explicit pointers, runs inside sandbox." },
+                    { icon: "fa-bolt", title: "Multithreaded", desc: "Can perform many tasks simultaneously." }
+                ],
+                jdkStructure: {
+                    jdk: "Java Development Kit (JDK): Tools to Develop (Compiler, Debugger) + JRE",
+                    jre: "Java Runtime Environment (JRE): Libraries + JVM",
+                    jvm: "Java Virtual Machine (JVM): Executes Bytecode"
+                },
+                helloWorld: `public class Main {
+    public static void main(String[] args) {
+        System.out.println("Hello, World!");
+    }
+}`
+            },
+            data: {
+                title: "Data Types & Variables",
+                description: "Variables are containers for storing data values. Java is strongly typed, meaning every variable must be declared with a data type.",
+                primitives: [
+                    { type: 'byte', size: 8, range: '-128 to 127' },
+                    { type: 'short', size: 16, range: '-32,768 to 32,767' },
+                    { type: 'int', size: 32, range: '-2B to 2B' },
+                    { type: 'long', size: 64, range: 'Very large' },
+                    { type: 'float', size: 32, range: 'Fractional numbers' },
+                    { type: 'double', size: 64, range: 'Precise fractions' },
+                    { type: 'char', size: 16, range: 'Single character' },
+                    { type: 'boolean', size: 1, range: 'true or false' }
+                ]
+            },
+            flow: {
+                title: "Control Flow",
+                description: "Control flow statements break up the flow of execution by employing decision making, looping, and branching, enabling your program to conditionally execute particular blocks of code.",
+                snippet: `// For Loop Example
+for (int i = 0; i < 5; i++) {
+    System.out.println("Count: " + i);
+}`
+            },
+            arrays: {
+                title: "Arrays",
+                description: "An array is a container object that holds a fixed number of values of a single type. The length of an array is established when the array is created.",
+            },
+            practice: {
+                title: "Problem Solving",
+                description: "Apply your knowledge to solve real coding problems. Practice is key to mastering Java.",
+                problems: [
+                    { 
+                        q: "Write a program to check if a number is even or odd.", 
+                        hint: "Use the modulo operator %", 
+                        sol: "if(n % 2 == 0) { /* Even */ } else { /* Odd */ }" 
+                    },
+                    { 
+                        q: "Print the factorial of a number N.", 
+                        hint: "Use a loop to multiply numbers from 1 to N", 
+                        sol: "int f=1; for(int i=1;i<=n;i++) f=f*i;" 
+                    }
+                ]
+            }
+        };
+
+        const navItems = [
+            { id: 'intro', label: 'Introduction' },
+            { id: 'data', label: 'Data Types' },
+            { id: 'flow', label: 'Control Flow' },
+            { id: 'arrays', label: 'Arrays' },
+            { id: 'practice', label: 'Practice' }
+        ];
+
+        // --- Core Rendering Functions ---
+
+        function init() {
+            renderNav();
+            renderContent('intro');
+            
+            // Mobile menu toggle
+            document.getElementById('mobile-menu-btn').addEventListener('click', () => {
+                const menu = document.getElementById('mobile-menu');
+                menu.classList.toggle('hidden');
+            });
+        }
+
+        function renderNav() {
+            const container = document.getElementById('nav-container');
+            const mobileContainer = document.getElementById('mobile-nav-container');
+            container.innerHTML = '';
+            mobileContainer.innerHTML = '';
+
+            navItems.forEach(item => {
+                // Desktop
+                const btn = document.createElement('button');
+                btn.className = `px-3 py-2 rounded-md text-sm font-medium transition-colors ${appState.currentTab === item.id ? 'tab-active' : 'tab-inactive'}`;
+                btn.textContent = item.label;
+                btn.onclick = () => switchTab(item.id);
+                container.appendChild(btn);
+
+                // Mobile
+                const mBtn = document.createElement('a');
+                mBtn.className = `block px-3 py-2 rounded-md text-base font-medium ${appState.currentTab === item.id ? 'bg-orange-50 text-orange-600' : 'text-gray-700 hover:bg-gray-50'}`;
+                mBtn.textContent = item.label;
+                mBtn.onclick = () => {
+                    switchTab(item.id);
+                    document.getElementById('mobile-menu').classList.add('hidden');
+                }
+                mobileContainer.appendChild(mBtn);
+            });
+        }
+
+        function switchTab(tabId) {
+            appState.currentTab = tabId;
+            renderNav();
+            renderContent(tabId);
+        }
+
+        function renderContent(tabId) {
+            const main = document.getElementById('main-content');
+            main.innerHTML = ''; // Clear current content
+
+            const data = contentData[tabId];
+            
+            // Common Header
+            const header = document.createElement('div');
+            header.className = "mb-8 text-center sm:text-left";
+            header.innerHTML = `
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">${data.title}</h1>
+                <p class="text-gray-600 max-w-3xl">${data.description}</p>
+            `;
+            main.appendChild(header);
+
+            // Specific Content Logic
+            if (tabId === 'intro') renderIntro(main);
+            else if (tabId === 'data') renderDataTypes(main);
+            else if (tabId === 'flow') renderControlFlow(main);
+            else if (tabId === 'arrays') renderArrays(main);
+            else if (tabId === 'practice') renderPractice(main);
+        }
+
+        // --- Module Renderers ---
+
+        function renderIntro(parent) {
+            // Grid layout
+            const grid = document.createElement('div');
+            grid.className = "grid grid-cols-1 lg:grid-cols-2 gap-8";
+
+            // Features Section
+            const featuresCard = document.createElement('div');
+            featuresCard.className = "bg-white p-6 rounded-lg shadow-sm border border-gray-200";
+            featuresCard.innerHTML = `<h2 class="text-xl font-bold mb-4 text-orange-600">Java Features</h2>`;
+            const featureGrid = document.createElement('div');
+            featureGrid.className = "grid grid-cols-1 sm:grid-cols-2 gap-4";
+            
+            contentData.intro.features.forEach(f => {
+                featureGrid.innerHTML += `
+                    <div class="p-3 border rounded hover:bg-orange-50 transition cursor-default">
+                        <i class="fa-solid ${f.icon} text-orange-500 mb-2 text-xl"></i>
+                        <h3 class="font-bold text-sm">${f.title}</h3>
+                        <p class="text-xs text-gray-500">${f.desc}</p>
+                    </div>
+                `;
+            });
+            featuresCard.appendChild(featureGrid);
+
+            // JDK Visualizer (Nested Boxes)
+            const jdkCard = document.createElement('div');
+            jdkCard.className = "bg-white p-6 rounded-lg shadow-sm border border-gray-200";
+            jdkCard.innerHTML = `
+                <h2 class="text-xl font-bold mb-4 text-blue-600">JDK / JRE / JVM Architecture</h2>
+                <p class="text-sm text-gray-500 mb-4">Hover over the boxes to understand the hierarchy.</p>
+                
+                <div class="border-2 border-blue-400 bg-blue-50 p-4 rounded jdk-box relative group/jdk">
+                    <span class="absolute top-2 right-2 font-bold text-blue-400 text-xs">JDK</span>
+                    <div class="text-center mb-4 font-bold text-blue-800">Java Development Kit</div>
+                    <div class="text-xs text-blue-600 mb-2 hidden group-hover/jdk:block">Contains tools (javac, debugger) + JRE</div>
+                    
+                    <div class="border-2 border-green-400 bg-green-50 p-4 rounded jdk-box relative group/jre mx-auto w-11/12">
+                        <span class="absolute top-2 right-2 font-bold text-green-400 text-xs">JRE</span>
+                        <div class="text-center mb-4 font-bold text-green-800">Java Runtime Environment</div>
+                        <div class="text-xs text-green-600 mb-2 hidden group-hover/jre:block">Libraries + JVM</div>
+
+                        <div class="border-2 border-purple-400 bg-purple-50 p-4 rounded jdk-box relative group/jvm mx-auto w-10/12">
+                            <span class="absolute top-2 right-2 font-bold text-purple-400 text-xs">JVM</span>
+                            <div class="text-center font-bold text-purple-800">Java Virtual Machine</div>
+                            <div class="text-xs text-purple-600 mt-1 hidden group-hover/jvm:block">Executes Bytecode</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Hello World Section
+            const helloCard = document.createElement('div');
+            helloCard.className = "lg:col-span-2 bg-gray-900 text-gray-100 p-6 rounded-lg shadow-lg font-mono text-sm overflow-x-auto";
+            helloCard.innerHTML = `
+                <h3 class="text-gray-400 mb-2">// First Program structure</h3>
+                <pre><code class="language-java text-green-300">public class</code> <span class="text-yellow-300">Main</span> {
+    <span class="text-gray-400">// main method is the entry point</span>
+    <code class="text-blue-300">public static void</code> <span class="text-yellow-300">main</span>(String[] args) {
+        <span class="text-purple-300">System</span>.out.println(<span class="text-orange-300">"Hello, World!"</span>); <span class="text-gray-500">// Prints to console</span>
+    }
+}</code></pre>
+            `;
+
+            grid.appendChild(featuresCard);
+            grid.appendChild(jdkCard);
+            grid.appendChild(helloCard);
+            parent.appendChild(grid);
+        }
+
+        function renderDataTypes(parent) {
+            const grid = document.createElement('div');
+            grid.className = "grid grid-cols-1 lg:grid-cols-2 gap-8";
+
+            // Chart Container
+            const chartWrapper = document.createElement('div');
+            chartWrapper.className = "bg-white p-6 rounded-lg shadow-sm border border-gray-200 flex flex-col";
+            chartWrapper.innerHTML = `
+                <h2 class="text-xl font-bold mb-4 text-gray-800">Primitive Data Size Comparison (Bits)</h2>
+                <p class="text-sm text-gray-500 mb-4">Visualizing how much memory each primitive type occupies.</p>
+                <div class="chart-container w-full">
+                    <canvas id="typeChart"></canvas>
+                </div>
+            `;
+            
+            // Interactive Operator Lab
+            const operatorLab = document.createElement('div');
+            operatorLab.className = "bg-white p-6 rounded-lg shadow-sm border border-gray-200";
+            operatorLab.innerHTML = `
+                <h2 class="text-xl font-bold mb-4 text-gray-800">Operator Lab</h2>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Value A</label>
+                        <input type="number" id="opA" value="10" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-50 border p-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Value B</label>
+                        <input type="number" id="opB" value="5" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-50 border p-2">
+                    </div>
+                </div>
+                <div class="space-y-2">
+                    <div class="flex justify-between p-2 bg-gray-50 rounded"><span class="font-mono">A + B</span> <span id="res-add" class="font-bold text-blue-600">15</span></div>
+                    <div class="flex justify-between p-2 bg-gray-50 rounded"><span class="font-mono">A % B</span> <span id="res-mod" class="font-bold text-blue-600">0</span></div>
+                    <div class="flex justify-between p-2 bg-gray-50 rounded"><span class="font-mono">A > B</span> <span id="res-gt" class="font-bold text-purple-600">true</span></div>
+                    <div class="flex justify-between p-2 bg-gray-50 rounded"><span class="font-mono">A == B</span> <span id="res-eq" class="font-bold text-purple-600">false</span></div>
+                </div>
+            `;
+
+            grid.appendChild(chartWrapper);
+            grid.appendChild(operatorLab);
+            parent.appendChild(grid);
+
+            // Init Chart
+            setTimeout(() => {
+                const ctx = document.getElementById('typeChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['byte', 'short', 'int', 'long', 'float', 'double', 'char', 'boolean'],
+                        datasets: [{
+                            label: 'Size in Bits',
+                            data: [8, 16, 32, 64, 32, 64, 16, 1],
+                            backgroundColor: [
+                                '#9ca3af', '#93c5fd', '#3b82f6', '#1d4ed8', 
+                                '#fcd34d', '#f59e0b', '#d8b4fe', '#fca5a5'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        indexAxis: 'y',
+                        plugins: {
+                            legend: { display: false }
+                        }
+                    }
+                });
+
+                // Init Operator Listeners
+                const updateOps = () => {
+                    const a = parseFloat(document.getElementById('opA').value) || 0;
+                    const b = parseFloat(document.getElementById('opB').value) || 0;
+                    document.getElementById('res-add').textContent = a + b;
+                    document.getElementById('res-mod').textContent = b !== 0 ? a % b : 'NaN';
+                    document.getElementById('res-gt').textContent = a > b;
+                    document.getElementById('res-eq').textContent = a == b;
+                };
+                document.getElementById('opA').addEventListener('input', updateOps);
+                document.getElementById('opB').addEventListener('input', updateOps);
+            }, 0);
+        }
+
+        function renderControlFlow(parent) {
+            const container = document.createElement('div');
+            container.className = "bg-white p-6 rounded-lg shadow-lg border border-gray-200 max-w-4xl mx-auto";
+            
+            container.innerHTML = `
+                <div class="flex flex-col md:flex-row gap-8">
+                    <div class="flex-1">
+                        <h2 class="text-xl font-bold mb-4">Loop Visualizer</h2>
+                        <p class="text-sm text-gray-600 mb-4">Click "Step" to walk through the <code class="bg-gray-100 p-1 rounded">for</code> loop logic.</p>
+                        
+                        <div class="bg-gray-900 text-gray-300 p-4 rounded font-mono text-sm mb-4">
+                            <div id="code-l1" class="px-2 transition-colors">int i = 0;</div>
+                            <div id="code-l2" class="px-2 transition-colors">i < 5; // Check Condition</div>
+                            <div id="code-l3" class="px-2 transition-colors">System.out.println(i);</div>
+                            <div id="code-l4" class="px-2 transition-colors">i++; // Increment</div>
+                        </div>
+
+                        <div class="flex items-center gap-4">
+                            <button id="step-btn" class="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700 transition">
+                                <i class="fa-solid fa-play mr-2"></i> Step
+                            </button>
+                            <button id="reset-btn" class="text-gray-600 hover:text-gray-900 underline text-sm">Reset</button>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 bg-gray-50 rounded p-4 flex flex-col justify-center items-center border border-dashed border-gray-300">
+                        <div class="text-center">
+                            <h3 class="font-bold text-gray-500 uppercase text-xs mb-2">Variable State</h3>
+                            <div class="text-5xl font-mono font-bold text-blue-600 mb-2" id="var-display">i = ?</div>
+                            <div id="loop-output" class="h-32 w-full bg-white border rounded p-2 overflow-y-auto font-mono text-xs text-left">
+                                <span class="text-gray-400">// Output Console</span><br>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            parent.appendChild(container);
+
+            // Simulation Logic
+            let step = 0;
+            let iVal = 0;
+            const max = 5;
+            
+            const highlight = (id) => {
+                ['code-l1', 'code-l2', 'code-l3', 'code-l4'].forEach(cid => {
+                    document.getElementById(cid).classList.remove('bg-gray-700', 'text-white');
+                });
+                if(id) document.getElementById(id).classList.add('bg-gray-700', 'text-white');
+            };
+
+            const stepBtn = document.getElementById('step-btn');
+            const varDisplay = document.getElementById('var-display');
+            const output = document.getElementById('loop-output');
+
+            document.getElementById('reset-btn').onclick = () => {
+                step = 0;
+                iVal = 0;
+                varDisplay.textContent = 'i = ?';
+                output.innerHTML = '<span class="text-gray-400">// Output Console</span><br>';
+                highlight(null);
+                stepBtn.disabled = false;
+                stepBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                stepBtn.innerHTML = '<i class="fa-solid fa-play mr-2"></i> Step';
+            };
+
+            stepBtn.onclick = () => {
+                // simple state machine
+                switch(step) {
+                    case 0: // Init
+                        highlight('code-l1');
+                        varDisplay.textContent = `i = ${iVal}`;
+                        step = 1;
+                        break;
+                    case 1: // Check
+                        highlight('code-l2');
+                        if (iVal < max) {
+                            step = 2; // Go to body
+                        } else {
+                            step = 4; // End
+                            varDisplay.textContent = `i = ${iVal} (Stop)`;
+                            highlight(null);
+                            stepBtn.disabled = true;
+                            stepBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                            stepBtn.innerHTML = 'Finished';
+                        }
+                        break;
+                    case 2: // Print
+                        highlight('code-l3');
+                        output.innerHTML += `> ${iVal}<br>`;
+                        output.scrollTop = output.scrollHeight;
+                        step = 3;
+                        break;
+                    case 3: // Increment
+                        highlight('code-l4');
+                        iVal++;
+                        varDisplay.textContent = `i = ${iVal}`;
+                        step = 1; // Loop back to check
+                        break;
+                }
+            };
+        }
+
+        function renderArrays(parent) {
+            const container = document.createElement('div');
+            container.className = "flex flex-col gap-8";
+
+            // 1D Array
+            const arr1Section = document.createElement('div');
+            arr1Section.className = "bg-white p-6 rounded-lg shadow-sm border border-gray-200";
+            arr1Section.innerHTML = `
+                <h2 class="text-xl font-bold mb-4">1D Array Visualization</h2>
+                <p class="text-sm text-gray-600 mb-6">Arrays are 0-indexed. Click a cell to change its value.</p>
+                <div class="flex flex-wrap gap-2 justify-center" id="array-container"></div>
+                <div class="mt-4 text-center">
+                    <p class="font-mono text-sm bg-gray-100 inline-block px-3 py-1 rounded">int[] numbers = new int[5];</p>
+                </div>
+            `;
+            
+            container.appendChild(arr1Section);
+            parent.appendChild(container);
+
+            const renderArrayViz = () => {
+                const arrDiv = document.getElementById('array-container');
+                arrDiv.innerHTML = '';
+                appState.arrayData.forEach((val, idx) => {
+                    const cell = document.createElement('div');
+                    cell.className = "w-16 h-20 flex flex-col items-center justify-center border-2 border-orange-200 rounded cursor-pointer hover:border-orange-500 bg-orange-50 transition";
+                    cell.innerHTML = `
+                        <span class="text-xs text-gray-400 mb-1">idx ${idx}</span>
+                        <span class="text-xl font-bold text-orange-700">${val}</span>
+                    `;
+                    cell.onclick = () => {
+                        const newVal = prompt(`Enter new integer for index ${idx}:`, val);
+                        if (newVal !== null && !isNaN(newVal)) {
+                            appState.arrayData[idx] = parseInt(newVal);
+                            renderArrayViz();
+                        }
+                    };
+                    arrDiv.appendChild(cell);
+                });
+            };
+            renderArrayViz();
+
+            // 2D Array
+            const matrixSection = document.createElement('div');
+            matrixSection.className = "bg-white p-6 rounded-lg shadow-sm border border-gray-200";
+            matrixSection.innerHTML = `
+                <h2 class="text-xl font-bold mb-4">2D Array (Matrix)</h2>
+                <p class="text-sm text-gray-600 mb-6">Visualized as a grid (rows x columns).</p>
+                <div class="grid gap-2 justify-center" id="matrix-container" style="grid-template-columns: repeat(3, minmax(0, 1fr)); width: fit-content; margin: 0 auto;"></div>
+            `;
+            container.appendChild(matrixSection);
+
+            const renderMatrixViz = () => {
+                const matDiv = document.getElementById('matrix-container');
+                matDiv.innerHTML = '';
+                appState.matrixData.forEach((row, rIdx) => {
+                    row.forEach((val, cIdx) => {
+                        const cell = document.createElement('div');
+                        cell.className = "w-20 h-16 flex flex-col items-center justify-center border-2 border-blue-200 rounded cursor-pointer hover:border-blue-500 bg-blue-50 transition";
+                        cell.innerHTML = `
+                            <span class="text-[10px] text-gray-400">[${rIdx}][${cIdx}]</span>
+                            <span class="font-bold text-blue-700">${val}</span>
+                        `;
+                        cell.onclick = () => {
+                            const newVal = prompt(`Enter value for [${rIdx}][${cIdx}]:`, val);
+                            if (newVal !== null && !isNaN(newVal)) {
+                                appState.matrixData[rIdx][cIdx] = parseInt(newVal);
+                                renderMatrixViz();
+                            }
+                        };
+                        matDiv.appendChild(cell);
+                    });
+                });
+            };
+            renderMatrixViz();
+        }
+
+        function renderPractice(parent) {
+            const container = document.createElement('div');
+            container.className = "max-w-3xl mx-auto space-y-6";
+
+            contentData.practice.problems.forEach((prob, index) => {
+                const card = document.createElement('div');
+                card.className = "bg-white p-6 rounded-lg shadow border border-gray-200";
+                
+                card.innerHTML = `
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <span class="inline-block bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded font-bold mb-2">Problem ${index + 1}</span>
+                            <h3 class="text-lg font-bold text-gray-800 mb-2">${prob.q}</h3>
+                            <p class="text-sm text-gray-500 italic mb-4">Hint: ${prob.hint}</p>
+                        </div>
+                        <i class="fa-solid fa-code text-gray-300 text-2xl"></i>
+                    </div>
+                    
+                    <button id="btn-sol-${index}" class="text-sm text-blue-600 font-medium hover:underline focus:outline-none">
+                        Show Solution
+                    </button>
+                    
+                    <div id="sol-${index}" class="hidden mt-4 bg-gray-900 text-gray-100 p-4 rounded text-sm font-mono overflow-x-auto">
+                        <pre><code>${prob.sol}</code></pre>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+
+                // Add event listener manually after appending
+                setTimeout(() => {
+                    document.getElementById(`btn-sol-${index}`).onclick = function() {
+                        const solDiv = document.getElementById(`sol-${index}`);
+                        const isHidden = solDiv.classList.contains('hidden');
+                        if (isHidden) {
+                            solDiv.classList.remove('hidden');
+                            this.textContent = 'Hide Solution';
+                        } else {
+                            solDiv.classList.add('hidden');
+                            this.textContent = 'Show Solution';
+                        }
+                    };
+                }, 0);
+            });
+
+            parent.appendChild(container);
+        }
+
+        // --- Init App ---
+        document.addEventListener('DOMContentLoaded', init);
+
+    </script>
+</body>
+</html>
